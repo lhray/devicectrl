@@ -18,7 +18,7 @@ func NewSWCtrl() *SWCtrl {
 }
 
 // RecData 接受状态码
-func (sw *SWCtrl) RecData(connection *net.TCPConn) []byte {
+func (sw *SWCtrl) RecData(connection *net.TCPConn) ([]byte, error) {
 	var rb = make([]byte, 20)
 	_, err := connection.Read(rb)
 
@@ -28,18 +28,20 @@ func (sw *SWCtrl) RecData(connection *net.TCPConn) []byte {
 		logs.Info("返回:", rb)
 	}
 
-	return rb
+	return rb, err
 }
 
 // SendData 发送控制码
-func (sw *SWCtrl) SendData(conn *net.TCPConn, sb []byte) {
+func (sw *SWCtrl) SendData(conn *net.TCPConn, sb []byte) error {
 	_, err := conn.Write(sb)
 
 	logs.Info("发送:", sb)
 
 	if err != nil {
-		logs.Error(err)
+		logs.Error(err.Error())
 	}
+
+	return err
 }
 
 // MakeCodes 构造控制码
@@ -54,7 +56,6 @@ func (sw *SWCtrl) MakeCodes(channel int, actionType byte) []byte {
 		} else {
 			sb[1] = 0x0b //全关
 		}
-
 	} else {
 		// 单通道分别控制
 		sb[1] = actionType // SW_OPEN or SW_CLOSE
@@ -69,4 +70,8 @@ func (sw *SWCtrl) MakeCodes(channel int, actionType byte) []byte {
 	}
 
 	return sb
+}
+
+func init() {
+	logs.SetLogger(logs.AdapterFile, `{"filename":"logs/swctrl/swctrl.log","level":7,"maxlines":0,"maxsize":0,"maxdays":10,"perm":"777"}`)
 }
