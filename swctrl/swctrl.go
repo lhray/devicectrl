@@ -1,4 +1,4 @@
-package devicectrl
+package swctrl
 
 import (
 	"net"
