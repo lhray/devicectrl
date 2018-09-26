@@ -11,16 +11,31 @@ var (
 	SW_CLOSE byte = 0x10 //关
 )
 
-type SWCtrl struct{}
+type SWCtrl struct {
+	Conn net.Conn
+}
 
-func NewSWCtrl() *SWCtrl {
-	return new(SWCtrl)
+func NewSWCtrl(adapter, urlAddr string) (pCtrl *SWCtrl, err error) {
+	conn, err := net.Dial(adapter, urlAddr)
+	pCtrl = nil
+
+	if err == nil {
+		pCtrl = &SWCtrl{Conn: conn}
+	} else {
+		logs.Error(err)
+	}
+
+	return
+}
+
+func (p *SWCtrl) Close() {
+	p.Conn.Close()
 }
 
 // RecData 接受状态码
-func (sw *SWCtrl) RecData(connection *net.TCPConn) ([]byte, error) {
+func (p *SWCtrl) RecData() ([]byte, error) {
 	var rb = make([]byte, 20)
-	_, err := connection.Read(rb)
+	_, err := p.Conn.Read(rb)
 
 	if err != nil {
 		logs.Error("返回错误:", err)
@@ -32,8 +47,8 @@ func (sw *SWCtrl) RecData(connection *net.TCPConn) ([]byte, error) {
 }
 
 // SendData 发送控制码
-func (sw *SWCtrl) SendData(conn *net.TCPConn, sb []byte) error {
-	_, err := conn.Write(sb)
+func (p *SWCtrl) SendData(sb []byte) error {
+	_, err := p.Conn.Write(sb)
 
 	logs.Info("发送:", sb)
 

@@ -1,6 +1,7 @@
 package v2ctrl
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/astaxie/beego/logs"
@@ -11,16 +12,31 @@ var (
 	V2_CLOSE byte = 0 //关
 )
 
-type V2Ctrl struct{}
+type V2Ctrl struct {
+	Conn net.Conn
+}
 
-func NewV2Ctrl() *V2Ctrl {
-	return new(V2Ctrl)
+func NewV2Ctrl(adapter, urlAddr string) (pCtrl *V2Ctrl, err error) {
+	conn, err := net.Dial(adapter, urlAddr)
+	pCtrl = nil
+
+	if err == nil {
+		pCtrl = &V2Ctrl{Conn: conn}
+	} else {
+		logs.Error(err)
+	}
+
+	return
+}
+
+func (p *V2Ctrl) Close() {
+	p.Conn.Close()
 }
 
 // RecData 接受状态码
-func (sw *V2Ctrl) RecData(connection *net.TCPConn) ([]byte, error) {
+func (p *V2Ctrl) RecData() ([]byte, error) {
 	var rb = make([]byte, 1024)
-	_, err := connection.Read(rb)
+	_, err := p.Conn.Read(rb)
 
 	if err != nil {
 		logs.Error("返回错误:", err)
@@ -32,8 +48,8 @@ func (sw *V2Ctrl) RecData(connection *net.TCPConn) ([]byte, error) {
 }
 
 // SendData 发送控制码
-func (sw *V2Ctrl) SendData(conn *net.TCPConn, sb []byte) error {
-	_, err := conn.Write(sb)
+func (p *V2Ctrl) SendData(sb []byte) error {
+	_, err := p.Conn.Write(sb)
 
 	logs.Info("发送:", string(sb))
 
@@ -46,7 +62,7 @@ func (sw *V2Ctrl) SendData(conn *net.TCPConn, sb []byte) error {
 
 // MakeCodes 构造控制码
 // actionType: SW_OPEN, SW_CLOSE
-func (sw *V2Ctrl) MakeCodes(channel int, actionType byte) []byte {
+func (p *V2Ctrl) MakeCodes(channel int, actionType byte) []byte {
 	var str string
 
 	if channel == 1 {
@@ -66,6 +82,21 @@ func (sw *V2Ctrl) MakeCodes(channel int, actionType byte) []byte {
 	}
 
 	return []byte(str)
+}
+
+func (p *V2Ctrl) OpenWithClose(channel, relaySecond int) []byte {
+	str := fmt.Sprintf("on%d:%02d", channel, relaySecond)
+
+	return []byte(str)
+}
+
+func (p *V2Ctrl) GetStatus(channel int) string {
+	str := fmt.Sprintf("read%d", channel)
+
+	p.SendData([]byte(str))
+	sb, _ := p.RecData()
+
+	return string(sb)
 }
 
 func init() {
