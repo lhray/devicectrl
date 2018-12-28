@@ -36,6 +36,10 @@ func (p *V2Ctrl) Close() {
 // RecData 接受状态码
 func (p *V2Ctrl) RecData() ([]byte, error) {
 	var rb = make([]byte, 1024)
+	for i := 0; i < 1024; i++ {
+		rb[i] = 0
+	}
+
 	_, err := p.Conn.Read(rb)
 
 	if err != nil {
